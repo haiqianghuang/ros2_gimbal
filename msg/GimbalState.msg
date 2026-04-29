@@ -1,0 +1,9 @@
+std_msgs/Header header
+uint8 mode
+bool has_feedback
+bool has_target
+bool stable
+int32 status_code
+control_gimbal_node/GimbalEuler angle
+control_gimbal_node/GimbalEuler speed
+control_gimbal_node/GimbalEuler target

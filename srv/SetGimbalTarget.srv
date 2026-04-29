@@ -1,0 +1,5 @@
+control_gimbal_node/GimbalEuler target
+---
+bool success
+int32 status_code
+string message

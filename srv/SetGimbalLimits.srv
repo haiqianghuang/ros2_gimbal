@@ -1,0 +1,7 @@
+control_gimbal_node/GimbalEuler min_angle
+control_gimbal_node/GimbalEuler max_angle
+control_gimbal_node/GimbalEuler max_speed
+---
+bool success
+int32 status_code
+string message
