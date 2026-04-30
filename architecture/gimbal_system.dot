@@ -1,0 +1,56 @@
+digraph G {
+    rankdir=TB;
+    nodesep=0.5;
+    ranksep=0.7;
+    fontname="Microsoft YaHei, SimHei, sans-serif";
+    label="Gimbal Control Subsystem Architecture";
+    labelloc="t";
+
+    node [shape=box, style="filled,rounded", color="#2c3e50", fillcolor="#ecf0f1", fontname="Microsoft YaHei"];
+    edge [color="#34495e", fontname="Microsoft YaHei", fontsize=10];
+
+    APP [label="上层应用 / ROS 2 客户端\n(Application Space)", fillcolor="#d5e8d4", color="#82b366"];
+    ROS_API [label="ROS 2 接口层\n/gimbal/state\n/gimbal/set_mode\n/gimbal/set_target\n/gimbal/set_limits\n/gimbal/set_zoom", fillcolor="#d5e8d4", color="#82b366"];
+    IFACE [label="{ control_gimbal_node | {GimbalState.msg | GimbalEuler.msg | SetGimbalMode.srv | SetGimbalTarget.srv | SetGimbalLimits.srv | SetGimbalZoom.srv} }", shape=record, fillcolor="#dae8fc", color="#6c8ebf"];
+
+    GIMBAL_NODE [label="{ gimbal_server_node.cpp | {参数加载 | gimbal_alloc_udp() | 模式/目标/限位/变倍服务回调 | tick timer | state publish timer} }", shape=record, fillcolor="#dae8fc", color="#6c8ebf"];
+    NODE_CACHE [label="节点侧运行态缓存\ncurrent_mode / last_target\nlimits_valid / stable_threshold\nframe_id", fillcolor="#fff2cc", color="#d6b656"];
+    TICK [label="周期任务 A\n按 tick_hz 调用 gimbal_tick(dt)", fillcolor="#fff2cc", color="#d6b656"];
+    STATE_PUB [label="周期任务 B\n按 state_publish_hz 调用\ngimbal_get_state() + gimbal_is_stable()\n发布 GimbalState", fillcolor="#fff2cc", color="#d6b656"];
+
+    CORE [label="{ gimbal.h + gimbal.c | {driver_register/find_driver | gimbal_set_mode() | gimbal_set_target() | gimbal_set_limits() | gimbal_set_zoom() | gimbal_get_state() | gimbal_is_stable()} }", shape=record, fillcolor="#dae8fc", color="#6c8ebf"];
+    CORE_STATE [label="核心状态机 / 缓存\ncmd_lock + state_lock\nmode / target / limits\ncur_angle / cur_speed / feedback age", fillcolor="#fff2cc", color="#d6b656"];
+    CORE_LOGIC [label="核心公共逻辑\nANGLE_REL 转绝对目标\napply_limits_locked()\n稳定性判定", fillcolor="#fff2cc", color="#d6b656"];
+
+    subgraph cluster_drivers {
+        label = "Driver Implementation Layer (gimbal_ops)";
+        style = dashed;
+        color = "#7f8c8d";
+
+        UDP_DRV [label="{ drv_udp_TZ0xxx.c | {open_udp_socket() | set_mode/set_target/set_zoom | recvfrom() + parse_status_feedback() | speed 模式命令重发} }", shape=record, fillcolor="#f5f5f5", color="#7f8c8d"];
+    }
+
+    UDP_IO [label="UDP Socket\nbind_ip:bind_port\n<-> device_ip:device_port", shape=note];
+    HW [label="TZ0xxx 云台设备\nT 系列 UDP 协议", shape=note];
+
+    APP -> ROS_API [label="订阅状态 / 调用服务"];
+    IFACE -> ROS_API [label="消息与服务定义"];
+    ROS_API -> GIMBAL_NODE [label="进入 ROS 2 节点封装层"];
+
+    GIMBAL_NODE -> NODE_CACHE [label="维护模式/目标/限位缓存"];
+    GIMBAL_NODE -> TICK [label="定时器"];
+    GIMBAL_NODE -> STATE_PUB [label="定时器"];
+    GIMBAL_NODE -> CORE [label="服务调用与设备分配"];
+
+    TICK -> CORE [label="gimbal_tick(dt)"];
+    STATE_PUB -> CORE [label="读取状态 / 判稳"];
+    STATE_PUB -> ROS_API [label="publish /gimbal/state"];
+
+    CORE -> CORE_STATE [label="统一状态存储"];
+    CORE -> CORE_LOGIC [label="公共控制逻辑"];
+    CORE -> UDP_DRV [label="按 driver_name 分发到 ops"];
+    UDP_DRV -> CORE_STATE [label="反馈写回 cur_angle/cur_speed"];
+
+    UDP_DRV -> UDP_IO [label="sendto / recvfrom"];
+    UDP_IO -> HW;
+}

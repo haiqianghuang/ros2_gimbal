@@ -1,0 +1,10 @@
+uint8 ZOOM_STOP=0
+uint8 ZOOM_IN=1
+uint8 ZOOM_OUT=2
+
+uint8 direction
+uint8 speed_level
+---
+bool success
+int32 status_code
+string message
